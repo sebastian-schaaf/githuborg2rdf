@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+type: software
+message: If you use this software, please cite it using this metadata.
+
+title: "githuborg2rdf"
+version: "0.1.0"
+abstract: "This pipeline generates an RDF from a GitHub organization in a six-step
+  process: 1) Extract all (non-bot) contributors of all the organizations's repositories
+  and 2) try to match them to ORCIDs. For those 3)get all DOI records from DataCite
+  including their metadata and 4) build an RDF graph out of the overall results. 5)
+  Assigning a basic set of quality measurements of the DOI records' metadata and 6)
+  a visualizationh are the final steps, providing an overview and enabling deeper
+  analyses of the graph."
+repository-code: "https://github.com/sebastian-schaaf/githuborg2rdf"
+license: "MIT"
+keywords:
+- Pipeline
+- RDF
+- graph
+- metadata
+- GitHub
+- repository
+- contributors
+- API
+- ORCID
+- DataCite
+- DOI
+- rdflib
+- quality
+- DQV
+- visualization
+authors:
+- family-names: Schaaf
+  given-names: Sebastian
+  email: sebastian.schaaf.galaxy@gmail.com
+  orcid: https://orcid.org/0000-0001-8193-0151
+  affiliation: undef
+contact:
+- family-names: Schaaf
+  email: sebastian.schaaf.galaxy@gmail.com
+  orcid: https://orcid.org/0000-0001-8193-0151
+  given-names: Sebastian
+url: https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url

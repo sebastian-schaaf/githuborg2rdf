@@ -1,0 +1,49 @@
+# NOTE: this repository uses the tool somesy to help you easily maintain
+# and synchronize all the high-level project metadata across multiple files.
+# To see which other metadata can be added, check out the somesy documentation
+# https://materials-data-science-and-informatics.github.io/somesy/main/
+[project]
+name = "githuborg2rdf"
+version = "0.1.0"
+description = "This pipeline generates an RDF from a GitHub organization in a six-step process: 1) Extract all (non-bot) contributors of all the organizations's repositories and 2) try to match them to ORCIDs. For those 3)get all DOI records from DataCite including their metadata and 4) build an RDF graph out of the overall results. 5) Assigning a basic set of quality measurements of the DOI records' metadata and 6) a visualizationh are the final steps, providing an overview and enabling deeper analyses of the graph."
+license = "MIT"
+
+keywords = [
+    "Pipeline",
+    "RDF",
+    "graph",
+    "metadata",
+    "GitHub",
+    "repository",
+    "contributors",
+    "API",
+    "ORCID",
+    "DataCite",
+    "DOI",
+    "rdflib",
+    "quality",
+    "DQV",
+    "visualization"
+]
+repository = "https://github.com/sebastian-schaaf/githuborg2rdf"
+homepage = "https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url"
+documentation = "https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url"
+
+[[project.people]]
+given-names = "Sebastian"
+family-names = "Schaaf"
+email = "sebastian.schaaf.galaxy@gmail.com"
+orcid = "https://orcid.org/0000-0001-8193-0151"
+author = true
+maintainer = true
+
+# You also can add more authors, maintainers or contributors here:
+# [[project.people]]
+# given-names = "Another"
+# family-names = "Contributor"
+# email = "contributor@email.com"
+# orcid = "https://orcid.org/0123-4567-8910-1112"
+# ...
+
+[config]
+verbose = true
