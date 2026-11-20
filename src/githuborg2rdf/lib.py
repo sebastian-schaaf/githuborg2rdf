@@ -20,7 +20,7 @@ class CalcOperation(str, Enum):
 def calculate(op: CalcOperation, x: int, y: int):
     """Calculate result of an operation on two integer numbers."""
     if not isinstance(op, CalcOperation):
-        raise ValueError(f"Unknown operation: {op}")
+        raise TypeError(f"Unknown operation: {op}")
 
     if op == CalcOperation.add:
         return x + y

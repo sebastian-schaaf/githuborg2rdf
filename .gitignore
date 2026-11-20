@@ -161,4 +161,7 @@ Thumbs.db
 # PyCharm / IntelliJ IDEA
 .idea/
 
+# ruff
+.ruff_cache/
+
 # End of https://www.toptal.com/developers/gitignore/api/python

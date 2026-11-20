@@ -11,7 +11,7 @@ def test_calculate_invalid():
     with pytest.raises(ZeroDivisionError):
         calculate(CalcOperation.divide, 123, 0)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError, match="Unknown operation: invalid"):
         calculate("invalid", 123, 0)  # type: ignore
 
     with pytest.raises(NotImplementedError):

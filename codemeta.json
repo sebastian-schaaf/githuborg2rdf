@@ -1,0 +1,57 @@
+{
+  "@context": [
+    "https://doi.org/10.5063/schema/codemeta-2.0",
+    "https://w3id.org/software-iodata",
+    "https://raw.githubusercontent.com/jantman/repostatus.org/master/badges/latest/ontology.jsonld",
+    "https://schema.org",
+    "https://w3id.org/software-types"
+  ],
+  "@type": "SoftwareSourceCode",
+  "author": [
+    {
+      "@type": "Person",
+      "givenName": "Sebastian",
+      "familyName": "Schaaf",
+      "email": "sebastian.schaaf.galaxy@gmail.com",
+      "@id": "https://orcid.org/0000-0001-8193-0151",
+      "identifier": "https://orcid.org/0000-0001-8193-0151"
+    }
+  ],
+  "name": "githuborg2rdf",
+  "description": "This pipeline generates an RDF from a GitHub organization in a six-step process: 1) Extract all (non-bot) contributors of all the organizations's repositories and 2) try to match them to ORCIDs. For those 3)get all DOI records from DataCite including their metadata and 4) build an RDF graph out of the overall results. 5) Assigning a basic set of quality measurements of the DOI records' metadata and 6) a visualizationh are the final steps, providing an overview and enabling deeper analyses of the graph.",
+  "version": "0.1.0",
+  "keywords": [
+    "Pipeline",
+    "RDF",
+    "graph",
+    "metadata",
+    "GitHub",
+    "repository",
+    "contributors",
+    "API",
+    "ORCID",
+    "DataCite",
+    "DOI",
+    "rdflib",
+    "quality",
+    "DQV",
+    "visualization"
+  ],
+  "maintainer": [
+    {
+      "@type": "Person",
+      "givenName": "Sebastian",
+      "familyName": "Schaaf",
+      "email": "sebastian.schaaf.galaxy@gmail.com",
+      "@id": "https://orcid.org/0000-0001-8193-0151",
+      "identifier": "https://orcid.org/0000-0001-8193-0151"
+    }
+  ],
+  "license": [
+    "https://spdx.org/licenses/MIT"
+  ],
+  "softwareHelp": "https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url",
+  "codeRepository": "https://github.com/sebastian-schaaf/githuborg2rdf",
+  "buildInstructions": "https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url",
+  "url": "https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url"
+}
