@@ -38,12 +38,18 @@ class FakeGitHubClient:
                     html_url="https://github.com/alice",
                     contributions=3,
                     repositories={"repo-one"},
+                    contributions_by_repository={
+                        "repo-one": 3,
+                    },
                 ),
                 Contributor(
                     login="bob",
                     html_url="https://github.com/bob",
                     contributions=1,
                     repositories={"repo-one"},
+                    contributions_by_repository={
+                        "repo-one": 1,
+                    },
                 ),
             ]
 
@@ -53,12 +59,18 @@ class FakeGitHubClient:
                 html_url="https://github.com/alice",
                 contributions=5,
                 repositories={"repo-two"},
+                contributions_by_repository={
+                    "repo-two": 5,
+                },
             ),
             Contributor(
                 login="charlie",
                 html_url="https://github.com/charlie",
                 contributions=2,
                 repositories={"repo-two"},
+                contributions_by_repository={
+                    "repo-two": 2,
+                },
             ),
         ]
 
@@ -91,14 +103,24 @@ def test_harvest_contributors_merges_and_sorts() -> None:
     alice = contributors[0]
     assert alice.contributions == 8
     assert alice.repositories == {"repo-one", "repo-two"}
+    assert alice.contributions_by_repository == {
+        "repo-one": 3,
+        "repo-two": 5,
+    }
 
     bob = contributors[1]
     assert bob.contributions == 1
     assert bob.repositories == {"repo-one"}
+    assert bob.contributions_by_repository == {
+        "repo-one": 1,
+    }
 
     charlie = contributors[2]
     assert charlie.contributions == 2
     assert charlie.repositories == {"repo-two"}
+    assert charlie.contributions_by_repository == {
+        "repo-two": 2,
+    }
 
 
 def test_harvest_contributors_returns_empty_result() -> None:

@@ -93,6 +93,7 @@ class GitHubClient:
         self,
         repository: Repository,
     ) -> list[Contributor]:
+        """Return contributors for a repository."""
         contributors: list[Contributor] = []
 
         for item in self._get_paginated(
@@ -100,6 +101,7 @@ class GitHubClient:
         ):
             login = item.get("login", "")
             contributor_type = item.get("type", "")
+            contribution_count = item.get("contributions", 0)
 
             is_bot = contributor_type.lower() == "bot" or login.endswith("[bot]")
 
@@ -110,8 +112,11 @@ class GitHubClient:
                 Contributor(
                     login=login,
                     html_url=item.get("html_url", ""),
-                    contributions=item.get("contributions", 0),
+                    contributions=contribution_count,
                     repositories={repository.name},
+                    contributions_by_repository={
+                        repository.name: contribution_count,
+                    },
                 )
             )
 

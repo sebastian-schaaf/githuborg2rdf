@@ -43,6 +43,9 @@ def harvest_contributors(
 
             existing.repositories.update(contributor.repositories)
             existing.contributions += contributor.contributions
+            existing.contributions_by_repository.update(
+                contributor.contributions_by_repository
+            )
 
     sorted_contributors = sorted(
         contributors_by_login.values(),

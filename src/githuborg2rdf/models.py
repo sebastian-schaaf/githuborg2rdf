@@ -1,6 +1,6 @@
 """Data models used by the githuborg2rdf pipeline."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -20,6 +20,7 @@ class Contributor:
     html_url: str
     contributions: int
     repositories: set[str]
+    contributions_by_repository: dict[str, int] = field(default_factory=dict)
     is_bot: bool = False
 
 
