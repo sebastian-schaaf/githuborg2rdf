@@ -142,17 +142,19 @@ def test_get_paginated_raises_for_http_error() -> None:
     """Raise GitHubApiError for unsuccessful HTTP responses."""
     client = create_client()
 
-    with patch.object(
-        client.session,
-        "get",
-        return_value=create_response(
-            {"message": "Forbidden"},
-            status_code=403,
-            ok=False,
-        ),
-    ) as mock_get:
-        with pytest.raises(GitHubApiError, match="403"):
-            list(client._get_paginated("/test"))
+    with (
+        patch.object(
+            client.session,
+            "get",
+            return_value=create_response(
+                {"message": "Forbidden"},
+                status_code=403,
+                ok=False,
+            ),
+        ) as mock_get,
+        pytest.raises(GitHubApiError, match="403"),
+    ):
+        list(client._get_paginated("/test"))
 
     mock_get.assert_called_once()
 
@@ -161,13 +163,15 @@ def test_get_paginated_raises_for_non_list_response() -> None:
     """Raise GitHubApiError when the API response is not a list."""
     client = create_client()
 
-    with patch.object(
-        client.session,
-        "get",
-        return_value=create_response({"message": "Not found"}),
-    ) as mock_get:
-        with pytest.raises(GitHubApiError, match="Expected a list"):
-            list(client._get_paginated("/test"))
+    with (
+        patch.object(
+            client.session,
+            "get",
+            return_value=create_response({"message": "Not found"}),
+        ) as mock_get,
+        pytest.raises(GitHubApiError, match="Expected a list"),
+    ):
+        list(client._get_paginated("/test"))
 
     mock_get.assert_called_once()
 
@@ -176,13 +180,15 @@ def test_get_paginated_raises_for_request_exception() -> None:
     """Raise GitHubApiError when the request fails."""
     client = create_client()
 
-    with patch.object(
-        client.session,
-        "get",
-        side_effect=requests.RequestException("connection failed"),
+    with (
+        patch.object(
+            client.session,
+            "get",
+            side_effect=requests.RequestException("connection failed"),
+        ),
+        pytest.raises(GitHubApiError),
     ):
-        with pytest.raises(GitHubApiError):
-            list(client._get_paginated("/test"))
+        list(client._get_paginated("/test"))
 
 
 def test_client_sets_authorization_header_with_token() -> None:
