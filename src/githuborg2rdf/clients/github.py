@@ -41,11 +41,9 @@ class GitHubClient:
         request_params.setdefault("per_page", 100)
 
         while True:
-            request_params["page"] = page
-
             response = self.session.get(
                 f"{self.base_url}{path}",
-                params=request_params,
+                params={**request_params, "page": page},
                 timeout=30,
             )
 

@@ -1,14 +1,32 @@
 """Pipeline orchestration for extracting and transforming GitHub data."""
 
+from typing import Protocol
+
 from githuborg2rdf.clients.github import GitHubClient
 from githuborg2rdf.config import Settings
-from githuborg2rdf.models import Contributor
+from githuborg2rdf.models import Contributor, Repository
+
+
+class GitHubClientProtocol(Protocol):
+    """Define the GitHub client methods required by the pipeline."""
+
+    def list_repositories(self, organization: str) -> list[Repository]:
+        """Return repositories belonging to an organization."""
+        ...
+
+    def list_contributors(
+        self,
+        repository: Repository,
+    ) -> list[Contributor]:
+        """Return contributors for a repository."""
+        ...
 
 
 def harvest_contributors(
     organization: str,
-    client: GitHubClient,
+    client: GitHubClientProtocol,
 ) -> list[Contributor]:
+    """Harvest and merge contributors from all organization repositories."""
     contributors_by_login: dict[str, Contributor] = {}
 
     repositories = client.list_repositories(organization)
@@ -33,6 +51,7 @@ def harvest_contributors(
 
 
 def run_harvest(organization: str) -> list[Contributor]:
+    """Run the contributor harvest using application settings."""
     settings = Settings.from_environment()
     client = GitHubClient(settings)
 
