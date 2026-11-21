@@ -3,6 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from githuborg2rdf.clients.github import GitHubApiError, GitHubClient
 from githuborg2rdf.config import Settings
@@ -169,3 +170,28 @@ def test_get_paginated_raises_for_non_list_response() -> None:
             list(client._get_paginated("/test"))
 
     mock_get.assert_called_once()
+
+
+def test_get_paginated_raises_for_request_exception() -> None:
+    """Raise GitHubApiError when the request fails."""
+    client = create_client()
+
+    with patch.object(
+        client.session,
+        "get",
+        side_effect=requests.RequestException("connection failed"),
+    ):
+        with pytest.raises(GitHubApiError):
+            list(client._get_paginated("/test"))
+
+
+def test_client_sets_authorization_header_with_token() -> None:
+    """Set the Authorization header when a GitHub token is configured."""
+    settings = Settings(
+        github_api_url="https://api.github.com",
+        github_token="test-token",  # noqa: S106
+    )
+
+    client = GitHubClient(settings)
+
+    assert client.session.headers["Authorization"] == "Bearer test-token"

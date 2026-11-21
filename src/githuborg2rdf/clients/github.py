@@ -41,11 +41,16 @@ class GitHubClient:
         request_params.setdefault("per_page", 100)
 
         while True:
-            response = self.session.get(
-                f"{self.base_url}{path}",
-                params={**request_params, "page": page},
-                timeout=30,
-            )
+            try:
+                response = self.session.get(
+                    f"{self.base_url}{path}",
+                    params={**request_params, "page": page},
+                    timeout=30,
+                )
+            except requests.RequestException as exc:
+                raise GitHubApiError(
+                    f"GitHub API request failed for {path}: {exc}"
+                ) from exc
 
             if not response.ok:
                 raise GitHubApiError(
