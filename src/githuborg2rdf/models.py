@@ -21,3 +21,12 @@ class Contributor:
     contributions: int
     repositories: set[str]
     is_bot: bool = False
+
+
+@dataclass
+class HarvestResult:
+    """Represent the complete result of an organization harvest."""
+
+    organization: str
+    repositories: list[Repository]
+    contributors: list[Contributor]

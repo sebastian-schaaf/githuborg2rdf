@@ -4,7 +4,7 @@ from typing import Protocol
 
 from githuborg2rdf.clients.github import GitHubClient
 from githuborg2rdf.config import Settings
-from githuborg2rdf.models import Contributor, Repository
+from githuborg2rdf.models import Contributor, HarvestResult, Repository
 
 
 class GitHubClientProtocol(Protocol):
@@ -25,7 +25,7 @@ class GitHubClientProtocol(Protocol):
 def harvest_contributors(
     organization: str,
     client: GitHubClientProtocol,
-) -> list[Contributor]:
+) -> HarvestResult:
     """Harvest and merge contributors from all organization repositories."""
     contributors_by_login: dict[str, Contributor] = {}
 
@@ -44,13 +44,19 @@ def harvest_contributors(
             existing.repositories.update(contributor.repositories)
             existing.contributions += contributor.contributions
 
-    return sorted(
+    sorted_contributors = sorted(
         contributors_by_login.values(),
         key=lambda contributor: contributor.login.lower(),
     )
 
+    return HarvestResult(
+        organization=organization,
+        repositories=repositories,
+        contributors=sorted_contributors,
+    )
 
-def run_harvest(organization: str) -> list[Contributor]:
+
+def run_harvest(organization: str) -> HarvestResult:
     """Run the contributor harvest using application settings."""
     settings = Settings.from_environment()
     client = GitHubClient(settings)

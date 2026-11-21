@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 
 from githuborg2rdf.cli import app
 from githuborg2rdf.clients.github import GitHubApiError
-from githuborg2rdf.models import Contributor
+from githuborg2rdf.models import Contributor, HarvestResult
 
 runner = CliRunner()
 
@@ -38,9 +38,15 @@ def test_harvest() -> None:
         ),
     ]
 
+    harvest_result = HarvestResult(
+        organization="example",
+        repositories=[],
+        contributors=contributors,
+    )
+
     with patch(
         "githuborg2rdf.cli.run_harvest",
-        return_value=contributors,
+        return_value=harvest_result,
     ) as mock_harvest:
         result = runner.invoke(app, ["harvest", "example"])
 
@@ -54,7 +60,11 @@ def test_harvest_without_contributors() -> None:
     """Report when no contributors are found."""
     with patch(
         "githuborg2rdf.cli.run_harvest",
-        return_value=[],
+        return_value=HarvestResult(
+            organization="example",
+            repositories=[],
+            contributors=[],
+        ),
     ):
         result = runner.invoke(app, ["harvest", "example"])
 

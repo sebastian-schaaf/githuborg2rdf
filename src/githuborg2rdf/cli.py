@@ -27,10 +27,12 @@ def calc(op: CalcOperation, x: int, y: int):
 def harvest(organization: str) -> None:
     """Harvest contributors for a GitHub organization."""
     try:
-        contributors = run_harvest(organization)
+        result = run_harvest(organization)
     except GitHubApiError as exc:
         typer.echo(f"GitHub API error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
+
+    contributors = result.contributors
 
     if not contributors:
         typer.echo(f"No contributors found for organization: {organization}")

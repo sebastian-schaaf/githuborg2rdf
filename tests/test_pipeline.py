@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from githuborg2rdf.models import Contributor, Repository
+from githuborg2rdf.models import Contributor, HarvestResult, Repository
 from githuborg2rdf.pipeline import harvest_contributors, run_harvest
 
 
@@ -65,7 +65,22 @@ class FakeGitHubClient:
 
 def test_harvest_contributors_merges_and_sorts() -> None:
     """Merge contributors across repositories and sort by login."""
-    contributors = harvest_contributors("example", FakeGitHubClient())
+    result = harvest_contributors("example", FakeGitHubClient())
+    contributors = result.contributors
+
+    assert result.organization == "example"
+    assert result.repositories == [
+        Repository(
+            owner="example",
+            name="repo-one",
+            html_url="https://github.com/example/repo-one",
+        ),
+        Repository(
+            owner="example",
+            name="repo-two",
+            html_url="https://github.com/example/repo-two",
+        ),
+    ]
 
     assert [contributor.login for contributor in contributors] == [
         "alice",
@@ -103,23 +118,36 @@ def test_harvest_contributors_returns_empty_result() -> None:
             """Return no contributors."""
             return []
 
-    assert harvest_contributors("empty-example", EmptyGitHubClient()) == []
+    result = harvest_contributors("empty-example", EmptyGitHubClient())
+
+    assert result.organization == "empty-example"
+    assert result.repositories == []
+    assert result.contributors == []
 
 
 def test_run_harvest_creates_client_and_delegates() -> None:
     """Create a configured client and delegate harvesting."""
-    expected = [
-        Contributor(
-            login="alice",
-            html_url="https://github.com/alice",
-            contributions=3,
-            repositories={"repo-one"},
-        )
-    ]
+    expected = HarvestResult(
+        organization="example",
+        repositories=[
+            Repository(
+                owner="example",
+                name="repo-one",
+                html_url="https://github.com/example/repo-one",
+            )
+        ],
+        contributors=[
+            Contributor(
+                login="alice",
+                html_url="https://github.com/alice",
+                contributions=3,
+                repositories={"repo-one"},
+            )
+        ],
+    )
 
     settings = MagicMock()
     client = MagicMock()
-    client_result = expected
 
     with (
         patch(
@@ -129,15 +157,15 @@ def test_run_harvest_creates_client_and_delegates() -> None:
         patch(
             "githuborg2rdf.pipeline.GitHubClient",
             return_value=client,
-        ) as mock_client,
+        ) as mock_client_class,
         patch(
             "githuborg2rdf.pipeline.harvest_contributors",
-            return_value=client_result,
+            return_value=expected,
         ) as mock_harvest,
     ):
         result = run_harvest("example")
 
     assert result == expected
     mock_settings.assert_called_once_with()
-    mock_client.assert_called_once_with(settings)
+    mock_client_class.assert_called_once_with(settings)
     mock_harvest.assert_called_once_with("example", client)
