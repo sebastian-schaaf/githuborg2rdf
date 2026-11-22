@@ -1,9 +1,18 @@
 """Tests for the contributor harvesting pipeline."""
 
+from typing import Any
 from unittest.mock import MagicMock, patch
 
+import requests
+
+from githuborg2rdf.clients.orcid import OrcidClient
 from githuborg2rdf.models import Contributor, DOIRecord, HarvestResult, Repository
-from githuborg2rdf.pipeline import enrich_dois, harvest_contributors, run_harvest
+from githuborg2rdf.pipeline import (
+    enrich_dois,
+    enrich_orcids,
+    harvest_contributors,
+    run_harvest,
+)
 
 
 class FakeGitHubClient:
@@ -191,6 +200,142 @@ def test_run_harvest_creates_client_and_delegates() -> None:
     mock_settings.assert_called_once_with()
     mock_client_class.assert_called_once_with(settings)
     mock_harvest.assert_called_once_with("example", client)
+
+
+class FakeOrcidClient:
+    """Return deterministic ORCID values for tests."""
+
+    def __init__(self, results: dict[str, str | None]) -> None:
+        """Initialize the fake client with configured ORCID results."""
+        self.results = results
+        self.calls: list[str] = []
+
+    def find_orcid(self, contributor_name: str) -> str | None:
+        """Return the configured ORCID for a contributor."""
+        self.calls.append(contributor_name)
+        return self.results.get(contributor_name)
+
+
+class FakeResponse:
+    """Represent a fake HTTP response."""
+
+    def __init__(
+        self,
+        payload: object,
+        status_code: int = 200,
+    ) -> None:
+        """Initialize the fake response."""
+        self.payload = payload
+        self.status_code = status_code
+
+    def raise_for_status(self) -> None:
+        """Raise an HTTP error for unsuccessful responses."""
+        if self.status_code >= 400:
+            raise requests.HTTPError(
+                f"HTTP {self.status_code}",
+            )
+
+    def json(self) -> object:
+        """Return the configured JSON payload."""
+        return self.payload
+
+
+def test_enrich_orcids_sets_matching_identifiers() -> None:
+    """Set ORCIDs for matching contributors."""
+    result = HarvestResult(
+        organization="example",
+        repositories=[],
+        contributors=[
+            Contributor(
+                login="alice",
+                html_url="https://github.com/alice",
+                contributions=3,
+                repositories={"repo-one"},
+            ),
+            Contributor(
+                login="bob",
+                html_url="https://github.com/bob",
+                contributions=1,
+                repositories={"repo-one"},
+            ),
+        ],
+    )
+
+    client = FakeOrcidClient(
+        {
+            "alice": "0000-0002-1825-0097",
+            "bob": None,
+        }
+    )
+
+    enriched_result = enrich_orcids(result, client)
+
+    assert enriched_result is result
+    assert result.contributors[0].orcid == "0000-0002-1825-0097"
+    assert result.contributors[1].orcid is None
+    assert client.calls == ["alice", "bob"]
+
+
+def test_find_orcid_retries_without_invalid_access_token(
+    monkeypatch: Any,
+) -> None:
+    """Retry without the token after an authentication failure."""
+    responses = [
+        FakeResponse(
+            {"error": "invalid token"},
+            status_code=401,
+        ),
+        FakeResponse(
+            {
+                "result": [
+                    {
+                        "orcid-identifier": {
+                            "path": "0000-0002-1825-0097",
+                        },
+                    },
+                ],
+            }
+        ),
+    ]
+
+    responses[0].status_code = 401
+    responses[1].status_code = 200
+
+    calls: list[dict[str, object]] = []
+
+    def fake_get(
+        url: str,
+        *,
+        params: dict[str, str],
+        headers: dict[str, str],
+        timeout: int,
+    ) -> FakeResponse:
+        calls.append(
+            {
+                "url": url,
+                "params": params,
+                "headers": headers,
+                "timeout": timeout,
+            }
+        )
+        return responses.pop(0)
+
+    monkeypatch.setattr(
+        "githuborg2rdf.clients.orcid.requests.get",
+        fake_get,
+    )
+
+    client = OrcidClient(access_token="expired-token")  # noqa: S106
+
+    assert client.find_orcid("Alice Example") == "0000-0002-1825-0097"
+    assert len(calls) == 2
+    assert calls[0]["headers"] == {
+        "Accept": "application/json",
+        "Authorization": "Bearer expired-token",
+    }
+    assert calls[1]["headers"] == {
+        "Accept": "application/json",
+    }
 
 
 class FakeDataCiteClient:

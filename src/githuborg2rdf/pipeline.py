@@ -2,8 +2,9 @@
 
 from typing import Protocol
 
-from githuborg2rdf.clients.datacite import DOIClient
+from githuborg2rdf.clients.datacite import DataCiteClient, DOIClient
 from githuborg2rdf.clients.github import GitHubClient
+from githuborg2rdf.clients.orcid import ORCIDClient, OrcidClient
 from githuborg2rdf.config import Settings
 from githuborg2rdf.models import Contributor, DOIRecord, HarvestResult, Repository
 
@@ -63,11 +64,33 @@ def harvest_contributors(
 def run_harvest(organization: str) -> HarvestResult:
     """Run the contributor harvest using application settings."""
     settings = Settings.from_environment()
-    client = GitHubClient(settings)
+    github_client = GitHubClient(settings)
+    orcid_client = OrcidClient(
+        access_token=settings.orcid_access_token,
+    )
+    datacite_client = DataCiteClient()
 
-    result = harvest_contributors(organization, client)
-    # result = enrich_orcids(result, orcid_client)
-    # result = enrich_dois(result, datacite_client)
+    result = harvest_contributors(organization, github_client)
+    result = enrich_orcids(result, orcid_client)
+    result = enrich_dois(result, datacite_client)
+
+    return result
+
+
+def enrich_orcids(
+    result: HarvestResult,
+    client: ORCIDClient,
+) -> HarvestResult:
+    """Find ORCID identifiers for harvested contributors."""
+    orcids_by_login: dict[str, str | None] = {}
+
+    for contributor in result.contributors:
+        login = contributor.login
+
+        if login not in orcids_by_login:
+            orcids_by_login[login] = client.find_orcid(login)
+
+        contributor.orcid = orcids_by_login[login]
 
     return result
 

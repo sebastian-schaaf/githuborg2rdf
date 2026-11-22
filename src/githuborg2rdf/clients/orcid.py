@@ -26,6 +26,10 @@ class OrcidClient:
         if not contributor_name.strip():
             return None
 
+        params = {
+            "q": f'credit-name:"{contributor_name}"',
+        }
+
         headers = {
             "Accept": "application/json",
         }
@@ -35,10 +39,19 @@ class OrcidClient:
 
         response = requests.get(
             f"{self.base_url}/search",
-            params={"q": f'credit-name:"{contributor_name}"'},
+            params=params,
             headers=headers,
             timeout=30,
         )
+
+        if response.status_code in {401, 403} and self.access_token is not None:
+            response = requests.get(
+                f"{self.base_url}/search",
+                params=params,
+                headers={"Accept": "application/json"},
+                timeout=30,
+            )
+
         response.raise_for_status()
 
         payload = response.json()

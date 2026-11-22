@@ -9,14 +9,23 @@ from githuborg2rdf.clients.orcid import OrcidClient
 
 
 class FakeResponse:
-    """Represent a minimal successful HTTP response."""
+    """Represent a minimal fake HTTP response."""
 
-    def __init__(self, payload: object) -> None:
-        """Initialize the response with a JSON-compatible payload."""
+    def __init__(
+        self,
+        payload: object,
+        status_code: int = 200,
+    ) -> None:
+        """Initialize the response with payload and status code."""
         self.payload = payload
+        self.status_code = status_code
 
     def raise_for_status(self) -> None:
-        """Do not raise for successful fake responses."""
+        """Raise an HTTP error for unsuccessful responses."""
+        if self.status_code >= 400:
+            raise requests.HTTPError(
+                f"HTTP {self.status_code}",
+            )
 
     def json(self) -> object:
         """Return the configured JSON payload."""

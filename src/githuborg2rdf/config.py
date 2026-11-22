@@ -11,8 +11,11 @@ class Settings:
     github_token: str | None = None
     github_api_url: str = "https://api.github.com"
 
+    orcid_access_token: str | None = None
+
     @classmethod
     def from_environment(cls) -> "Settings":
         return cls(
             github_token=os.getenv("GITHUB_TOKEN"),
+            orcid_access_token=os.getenv("ORCID_ACCESS_TOKEN"),
         )
