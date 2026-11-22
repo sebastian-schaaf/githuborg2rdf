@@ -2,9 +2,10 @@
 
 from typing import Protocol
 
+from githuborg2rdf.clients.datacite import DOIClient
 from githuborg2rdf.clients.github import GitHubClient
 from githuborg2rdf.config import Settings
-from githuborg2rdf.models import Contributor, HarvestResult, Repository
+from githuborg2rdf.models import Contributor, DOIRecord, HarvestResult, Repository
 
 
 class GitHubClientProtocol(Protocol):
@@ -64,4 +65,33 @@ def run_harvest(organization: str) -> HarvestResult:
     settings = Settings.from_environment()
     client = GitHubClient(settings)
 
-    return harvest_contributors(organization, client)
+    result = harvest_contributors(organization, client)
+    # result = enrich_orcids(result, orcid_client)
+    # result = enrich_dois(result, datacite_client)
+
+    return result
+
+
+def enrich_dois(
+    result: HarvestResult,
+    client: DOIClient,
+) -> HarvestResult:
+    """Find DOI records for contributors with ORCIDs."""
+    records_by_doi: dict[str, DOIRecord] = {}
+
+    for contributor in result.contributors:
+        if contributor.orcid is None:
+            continue
+
+        records = client.find_dois(contributor.orcid)
+
+        for record in records:
+            records_by_doi.setdefault(record.doi, record)
+            contributor.doi_ids.add(record.doi)
+
+    result.doi_records = sorted(
+        records_by_doi.values(),
+        key=lambda record: record.doi,
+    )
+
+    return result
