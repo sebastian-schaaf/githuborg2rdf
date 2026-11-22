@@ -178,7 +178,10 @@ def test_run_harvest_creates_client_and_delegates() -> None:
     )
 
     settings = MagicMock()
-    client = MagicMock()
+    settings.orcid_access_token = "test-token"  # noqa: S105
+    github_client = MagicMock()
+    orcid_client = MagicMock()
+    datacite_client = MagicMock()
 
     with (
         patch(
@@ -187,19 +190,53 @@ def test_run_harvest_creates_client_and_delegates() -> None:
         ) as mock_settings,
         patch(
             "githuborg2rdf.pipeline.GitHubClient",
-            return_value=client,
-        ) as mock_client_class,
+            return_value=github_client,
+        ) as mock_github_client,
+        patch(
+            "githuborg2rdf.pipeline.OrcidClient",
+            return_value=orcid_client,
+        ) as mock_orcid_client,
+        patch(
+            "githuborg2rdf.pipeline.DataCiteClient",
+            return_value=datacite_client,
+        ) as mock_datacite_client,
         patch(
             "githuborg2rdf.pipeline.harvest_contributors",
             return_value=expected,
         ) as mock_harvest,
+        patch(
+            "githuborg2rdf.pipeline.enrich_orcids",
+            return_value=expected,
+        ) as mock_enrich_orcids,
+        patch(
+            "githuborg2rdf.pipeline.enrich_dois",
+            return_value=expected,
+        ) as mock_enrich_dois,
     ):
         result = run_harvest("example")
 
     assert result == expected
+
     mock_settings.assert_called_once_with()
-    mock_client_class.assert_called_once_with(settings)
-    mock_harvest.assert_called_once_with("example", client)
+    mock_github_client.assert_called_once_with(settings)
+    mock_orcid_client.assert_called_once()
+    mock_datacite_client.assert_called_once_with()
+
+    mock_harvest.assert_called_once_with(
+        "example",
+        github_client,
+    )
+    mock_enrich_orcids.assert_called_once_with(
+        expected,
+        orcid_client,
+    )
+    mock_orcid_client.assert_called_once_with(
+        access_token="test-token",  # noqa: S106
+    )
+    mock_enrich_dois.assert_called_once_with(
+        expected,
+        datacite_client,
+    )
 
 
 class FakeOrcidClient:
