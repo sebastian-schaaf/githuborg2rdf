@@ -3,10 +3,77 @@
 from rdflib import BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, XSD
 
-from githuborg2rdf.models import HarvestResult
+from githuborg2rdf.models import DOIRecord, HarvestResult
 
 SCHEMA = Namespace("https://schema.org/")
 G2R = Namespace("https://github.com/sebastian-schaaf/githuborg2rdf/vocab/")
+DQV = Namespace("http://www.w3.org/ns/dqv#")
+QUALITY = Namespace("https://github.com/sebastian-schaaf/githuborg2rdf/quality/")
+
+
+def add_metadata_quality_measurements(
+    graph: Graph,
+    record: DOIRecord,
+    record_uri: URIRef,
+) -> None:
+    """Add DQV quality measurements for one DOI record."""
+    quality = record.metadata_quality
+
+    if quality is None:
+        return
+
+    checks = (
+        (QUALITY.hasLicense, quality.has_license),
+        (QUALITY.hasDescription, quality.has_description),
+        (
+            QUALITY.creatorsHaveOrcids,
+            quality.creators_have_orcids,
+        ),
+        (
+            QUALITY.hasRelatedIdentifiers,
+            quality.has_related_identifiers,
+        ),
+        (QUALITY.hasFunding, quality.has_funding),
+    )
+
+    for check_uri, value in checks:
+        measurement_uri = BNode()
+
+        graph.add(
+            (
+                record_uri,
+                DQV.hasQualityMeasurement,
+                measurement_uri,
+            )
+        )
+        graph.add(
+            (
+                measurement_uri,
+                RDF.type,
+                DQV.QualityMeasurement,
+            )
+        )
+        graph.add(
+            (
+                measurement_uri,
+                DQV.computedOn,
+                record_uri,
+            )
+        )
+        graph.add(
+            (
+                measurement_uri,
+                DQV.isMeasurementOf,
+                check_uri,
+            )
+        )
+        graph.add(
+            (
+                measurement_uri,
+                DQV.value,
+                Literal(value, datatype=XSD.boolean),
+            )
+        )
 
 
 def _doi_uri(doi: str) -> URIRef:
@@ -27,7 +94,7 @@ def build_graph(result: HarvestResult) -> Graph:
     # ├── Export repositories
     # ├── Export DOI datasets
     # │   ├── DOI metadata
-    # │   ├── Creator
+    # │   ├── Creators
     # │   └── DataCite contributors
     # └── Export GitHub contributors
     #     ├── general contributor data
@@ -35,11 +102,13 @@ def build_graph(result: HarvestResult) -> Graph:
     #     ├── DOI relations
     #     └── GitHub contributions
 
+    # Init graph and namespaces
     graph = Graph()
 
     graph.bind("schema", SCHEMA)
     graph.bind("g2r", G2R)
 
+    # Export organization
     organization_uri = URIRef(f"https://github.com/{result.organization}")
 
     graph.add((organization_uri, RDF.type, SCHEMA.Organization))
@@ -51,6 +120,7 @@ def build_graph(result: HarvestResult) -> Graph:
         )
     )
 
+    # Export repositories
     repositories_by_name: dict[str, URIRef] = {}
 
     for repository in result.repositories:
@@ -86,7 +156,7 @@ def build_graph(result: HarvestResult) -> Graph:
             )
         )
 
-    # Export DOI records and their metadata.
+    # Export DOI datasets and their metadata.
     for record in result.doi_records:
         record_uri = _doi_uri(record.doi)
 
@@ -97,7 +167,7 @@ def build_graph(result: HarvestResult) -> Graph:
                 SCHEMA.CreativeWork,
             )
         )
-
+        # DOI metadata
         if record.title is not None:
             graph.add(
                 (
@@ -137,6 +207,7 @@ def build_graph(result: HarvestResult) -> Graph:
                 )
             )
 
+        # Creators
         for creator in record.creators:
             creator_node = BNode()
 
@@ -171,6 +242,7 @@ def build_graph(result: HarvestResult) -> Graph:
                     )
                 )
 
+        # DataCite contributors
         for doi_contributor in record.contributors:
             contributor_node = BNode()
 
@@ -213,10 +285,18 @@ def build_graph(result: HarvestResult) -> Graph:
                         _orcid_uri(doi_contributor.orcid),
                     )
                 )
+        # Metadata quality measurements
+        add_metadata_quality_measurements(
+            graph,
+            record,
+            record_uri,
+        )
 
+    # Export GitHub contributors
     for contributor in result.contributors:
         contributor_uri = URIRef(contributor.html_url)
 
+        # general contributor data
         graph.add((contributor_uri, RDF.type, SCHEMA.Person))
         graph.add(
             (
@@ -240,7 +320,7 @@ def build_graph(result: HarvestResult) -> Graph:
             )
         )
 
-        # Export the ORCID belonging to the GitHub contributor.
+        # ORCID belonging to the GitHub contributor.
         if contributor.orcid:
             graph.add(
                 (
@@ -250,7 +330,7 @@ def build_graph(result: HarvestResult) -> Graph:
                 )
             )
 
-        # Link the GitHub contributor to their DOI records.
+        # DOI relations (to GitHub contributors).
         for doi in sorted(contributor.doi_ids):
             graph.add(
                 (
@@ -260,6 +340,7 @@ def build_graph(result: HarvestResult) -> Graph:
                 )
             )
 
+        # GitHub contributions
         for repository_name, contribution_count in sorted(
             contributor.contributions_by_repository.items()
         ):

@@ -1,8 +1,9 @@
 """Tests for RDF graph generation."""
 
-from rdflib import Literal, URIRef
+from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import RDF, XSD
 
+from githuborg2rdf.metadata_quality import check_metadata_quality
 from githuborg2rdf.models import (
     Contributor,
     DOIContributor,
@@ -10,7 +11,14 @@ from githuborg2rdf.models import (
     HarvestResult,
     Repository,
 )
-from githuborg2rdf.rdf import G2R, SCHEMA, build_graph
+from githuborg2rdf.rdf import (
+    DQV,
+    G2R,
+    QUALITY,
+    SCHEMA,
+    add_metadata_quality_measurements,
+    build_graph,
+)
 
 
 def test_build_graph_exports_organization_repository_and_contribution() -> None:
@@ -279,3 +287,215 @@ def test_build_graph_exports_doi_people() -> None:
         G2R.contributorType,
         Literal("DataCurator"),
     ) in graph
+
+
+def test_add_metadata_quality_measurements_creates_five_measurements() -> None:
+    """Create one DQV measurement for each quality check."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+    record.metadata_quality = check_metadata_quality(record)
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    measurements = list(
+        graph.objects(
+            record_uri,
+            DQV.hasQualityMeasurement,
+        )
+    )
+
+    assert len(measurements) == 5
+
+
+def test_quality_measurements_have_required_dqv_properties() -> None:
+    """Add the required DQV properties to every measurement."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+    record.metadata_quality = check_metadata_quality(record)
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    measurements = list(
+        graph.objects(
+            record_uri,
+            DQV.hasQualityMeasurement,
+        )
+    )
+
+    assert len(measurements) == 5
+
+    for measurement in measurements:
+        assert (
+            measurement,
+            RDF.type,
+            DQV.QualityMeasurement,
+        ) in graph
+
+        assert (
+            measurement,
+            DQV.computedOn,
+            record_uri,
+        ) in graph
+
+        assert (
+            measurement,
+            DQV.isMeasurementOf,
+            None,
+        ) in graph
+
+        assert (
+            measurement,
+            DQV.value,
+            None,
+        ) in graph
+
+
+def test_quality_measurements_contain_all_checks_and_values() -> None:
+    """Represent every quality check with its boolean result."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+    record.metadata_quality = check_metadata_quality(record)
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    expected_checks = {
+        QUALITY.hasLicense: False,
+        QUALITY.hasDescription: False,
+        QUALITY.creatorsHaveOrcids: False,
+        QUALITY.hasRelatedIdentifiers: False,
+        QUALITY.hasFunding: False,
+    }
+
+    for check_uri, expected_value in expected_checks.items():
+        measurements = list(
+            graph.subjects(
+                DQV.isMeasurementOf,
+                check_uri,
+            )
+        )
+
+        assert len(measurements) == 1
+
+        measurement = measurements[0]
+        value = graph.value(
+            measurement,
+            DQV.value,
+        )
+
+        assert value == Literal(
+            expected_value,
+            datatype=XSD.boolean,
+        )
+
+
+def test_quality_measurements_preserve_individual_results() -> None:
+    """Export both passing and failing individual checks."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+
+    quality = check_metadata_quality(record)
+    assert quality.has_license is False
+    assert quality.has_description is False
+
+    record.metadata_quality = quality
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    license_measurement = next(
+        graph.subjects(
+            DQV.isMeasurementOf,
+            QUALITY.hasLicense,
+        )
+    )
+
+    value = graph.value(
+        license_measurement,
+        DQV.value,
+    )
+
+    assert value == Literal(False, datatype=XSD.boolean)
+
+
+def test_no_measurements_are_created_without_quality_result() -> None:
+    """Skip measurements when quality has not been evaluated."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    measurements = list(
+        graph.objects(
+            record_uri,
+            DQV.hasQualityMeasurement,
+        )
+    )
+
+    assert measurements == []
+
+
+def test_quality_measurement_values_are_xsd_booleans() -> None:
+    """Serialize quality values as typed RDF booleans."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+    record.metadata_quality = check_metadata_quality(record)
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    measurement = next(
+        graph.objects(
+            record_uri,
+            DQV.hasQualityMeasurement,
+        )
+    )
+
+    value = graph.value(measurement, DQV.value)
+
+    assert value == Literal(False, datatype=XSD.boolean)
