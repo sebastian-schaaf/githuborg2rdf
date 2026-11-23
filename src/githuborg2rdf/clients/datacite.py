@@ -5,7 +5,15 @@ from typing import Protocol
 
 import requests
 
-from githuborg2rdf.models import DOIContributor, DOIRecord
+from githuborg2rdf.models import (
+    Description,
+    DOIContributor,
+    DOIRecord,
+    FundingReference,
+    NameIdentifier,
+    RelatedIdentifier,
+    Right,
+)
 
 
 def _parse_doi_people(
@@ -32,6 +40,10 @@ def _parse_doi_people(
 
         contributor_type: str | None = None
 
+        name_identifiers = _parse_name_identifiers(
+            item.get("nameIdentifiers"),
+        )
+
         if is_contributor:
             raw_contributor_type = item.get("contributorType")
 
@@ -43,6 +55,7 @@ def _parse_doi_people(
                 name=name,
                 orcid=orcid,
                 contributor_type=contributor_type,
+                name_identifiers=name_identifiers,
             )
         )
 
@@ -169,7 +182,189 @@ class DataCiteClient:
                         attributes.get("contributors"),
                         is_contributor=True,
                     ),
+                    rights_list=_parse_rights(attributes.get("rightsList")),
+                    descriptions=_parse_descriptions(
+                        attributes.get("descriptions"),
+                    ),
+                    related_identifiers=_parse_related_identifiers(
+                        attributes.get("relatedIdentifiers"),
+                    ),
+                    funding_references=_parse_funding_references(
+                        attributes.get("fundingReferences"),
+                    ),
                 )
             )
 
         return records
+
+
+def _parse_name_identifiers(value: object) -> list[NameIdentifier]:
+    """Parse DataCite name identifiers."""
+    if not isinstance(value, list):
+        return []
+
+    identifiers: list[NameIdentifier] = []
+
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+
+        identifier = item.get("nameIdentifier")
+
+        if not isinstance(identifier, str) or not identifier:
+            continue
+
+        scheme = item.get("nameIdentifierScheme")
+        if not isinstance(scheme, str):
+            scheme = None
+
+        scheme_uri = item.get("schemeUri")
+        if not isinstance(scheme_uri, str):
+            scheme_uri = None
+
+        identifiers.append(
+            NameIdentifier(
+                identifier=identifier,
+                scheme=scheme,
+                scheme_uri=scheme_uri,
+            )
+        )
+
+    return identifiers
+
+
+def _parse_descriptions(value: object) -> list[Description]:
+    """Parse DataCite descriptions."""
+    if not isinstance(value, list):
+        return []
+
+    descriptions: list[Description] = []
+
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+
+        description = item.get("description")
+
+        if not isinstance(description, str):
+            continue
+
+        description_type = item.get("descriptionType")
+
+        if not isinstance(description_type, str):
+            description_type = None
+
+        descriptions.append(
+            Description(
+                value=description,
+                description_type=description_type,
+            )
+        )
+
+    return descriptions
+
+
+def _parse_rights(value: object) -> list[Right]:
+    """Parse DataCite rights information."""
+    if not isinstance(value, list):
+        return []
+
+    rights_list: list[Right] = []
+
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+
+        rights = item.get("rights")
+        rights_uri = item.get("rightsUri")
+        rights_identifier = item.get("rightsIdentifier")
+
+        rights_list.append(
+            Right(
+                rights=rights if isinstance(rights, str) else None,
+                rights_uri=rights_uri if isinstance(rights_uri, str) else None,
+                rights_identifier=(
+                    rights_identifier if isinstance(rights_identifier, str) else None
+                ),
+            )
+        )
+
+    return rights_list
+
+
+def _parse_related_identifiers(
+    value: object,
+) -> list[RelatedIdentifier]:
+    """Parse DataCite related identifiers."""
+    if not isinstance(value, list):
+        return []
+
+    identifiers: list[RelatedIdentifier] = []
+
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+
+        identifier = item.get("relatedIdentifier")
+
+        if not isinstance(identifier, str) or not identifier:
+            continue
+
+        identifier_type = item.get("relatedIdentifierType")
+        relation_type = item.get("relationType")
+
+        identifiers.append(
+            RelatedIdentifier(
+                identifier=identifier,
+                identifier_type=(
+                    identifier_type if isinstance(identifier_type, str) else None
+                ),
+                relation_type=(
+                    relation_type if isinstance(relation_type, str) else None
+                ),
+            )
+        )
+
+    return identifiers
+
+
+def _parse_funding_references(
+    value: object,
+) -> list[FundingReference]:
+    """Parse DataCite funding references."""
+    if not isinstance(value, list):
+        return []
+
+    references: list[FundingReference] = []
+
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+
+        funder_name = item.get("funderName")
+
+        if not isinstance(funder_name, str) or not funder_name:
+            continue
+
+        funder_identifier = item.get("funderIdentifier")
+        funder_identifier_type = item.get("funderIdentifierType")
+        award_number = item.get("awardNumber")
+        award_title = item.get("awardTitle")
+
+        references.append(
+            FundingReference(
+                funder_name=funder_name,
+                funder_identifier=(
+                    funder_identifier if isinstance(funder_identifier, str) else None
+                ),
+                funder_identifier_type=(
+                    funder_identifier_type
+                    if isinstance(funder_identifier_type, str)
+                    else None
+                ),
+                award_number=(award_number if isinstance(award_number, str) else None),
+                award_title=(award_title if isinstance(award_title, str) else None),
+            )
+        )
+
+    return references

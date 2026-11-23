@@ -6,7 +6,10 @@ import pytest
 import requests
 
 from githuborg2rdf.clients.datacite import DataCiteClient
-from githuborg2rdf.models import DOIContributor
+from githuborg2rdf.models import (
+    DOIContributor,
+    NameIdentifier,
+)
 
 
 class FakeResponse:
@@ -43,6 +46,39 @@ def test_find_dois_parses_doi_metadata(
                     },
                     "publisher": "Zenodo",
                     "publicationYear": 2025,
+                    "rightsList": [
+                        {
+                            "rights": "Creative Commons Attribution 4.0",
+                            "rightsUri": "https://creativecommons.org/licenses/by/4.0/",
+                            "rightsIdentifier": "CC-BY-4.0",
+                        },
+                    ],
+                    "descriptions": [
+                        {
+                            "description": (
+                                "This is a sufficiently long description containing more "
+                                "than one hundred characters so that the metadata quality "
+                                "check can pass for this record."
+                            ),
+                            "descriptionType": "Abstract",
+                        },
+                    ],
+                    "relatedIdentifiers": [
+                        {
+                            "relatedIdentifier": "https://github.com/example/repository",
+                            "relatedIdentifierType": "URL",
+                            "relationType": "IsSupplementTo",
+                        },
+                    ],
+                    "fundingReferences": [
+                        {
+                            "funderName": "Example Research Foundation",
+                            "funderIdentifier": "https://ror.org/012345678",
+                            "funderIdentifierType": "ROR",
+                            "awardNumber": "EXAMPLE-2025-001",
+                            "awardTitle": "Example Research Grant",
+                        },
+                    ],
                     "creators": [
                         {
                             "name": "Alice Example",
@@ -105,6 +141,12 @@ def test_find_dois_parses_doi_metadata(
         DOIContributor(
             name="Alice Example",
             orcid="0000-0002-1825-0097",
+            name_identifiers=[
+                NameIdentifier(
+                    identifier="https://orcid.org/0000-0002-1825-0097",
+                    scheme="ORCID",
+                ),
+            ],
         ),
     ]
 
@@ -114,6 +156,33 @@ def test_find_dois_parses_doi_metadata(
             contributor_type="DataCurator",
         ),
     ]
+
+    assert len(record.rights_list) == 1
+    assert record.rights_list[0].rights == "Creative Commons Attribution 4.0"
+    assert (
+        record.rights_list[0].rights_uri
+        == "https://creativecommons.org/licenses/by/4.0/"
+    )
+    assert record.rights_list[0].rights_identifier == "CC-BY-4.0"
+
+    assert len(record.descriptions) == 1
+    assert record.descriptions[0].description_type == "Abstract"
+    assert len(record.descriptions[0].value) >= 100
+
+    assert len(record.related_identifiers) == 1
+    assert (
+        record.related_identifiers[0].identifier
+        == "https://github.com/example/repository"
+    )
+    assert record.related_identifiers[0].identifier_type == "URL"
+    assert record.related_identifiers[0].relation_type == "IsSupplementTo"
+
+    assert len(record.funding_references) == 1
+    assert record.funding_references[0].funder_name == "Example Research Foundation"
+    assert record.funding_references[0].funder_identifier == "https://ror.org/012345678"
+    assert record.funding_references[0].funder_identifier_type == "ROR"
+    assert record.funding_references[0].award_number == "EXAMPLE-2025-001"
+    assert record.funding_references[0].award_title == "Example Research Grant"
 
 
 def test_find_dois_returns_empty_list_without_matches(

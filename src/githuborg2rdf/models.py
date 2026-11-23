@@ -27,12 +27,61 @@ class Contributor:
 
 
 @dataclass(frozen=True)
+class NameIdentifier:
+    """Represent an identifier assigned to a creator."""
+
+    identifier: str
+    scheme: str | None = None
+    scheme_uri: str | None = None
+
+
+@dataclass(frozen=True)
+class Description:
+    """Represent a DataCite description."""
+
+    value: str
+    description_type: str | None = None
+
+
+@dataclass(frozen=True)
+class RelatedIdentifier:
+    """Represent a related resource identifier."""
+
+    identifier: str
+    identifier_type: str | None = None
+    relation_type: str | None = None
+
+
+@dataclass(frozen=True)
+class FundingReference:
+    """Represent a funding reference."""
+
+    funder_name: str
+    funder_identifier: str | None = None
+    funder_identifier_type: str | None = None
+    award_number: str | None = None
+    award_title: str | None = None
+
+
+@dataclass(frozen=True)
+class Right:
+    """Represent a license or other right."""
+
+    rights: str | None = None
+    rights_uri: str | None = None
+    rights_identifier: str | None = None
+
+
+@dataclass(frozen=True)
 class DOIContributor:
     """Represent a person or organization from DOI metadata."""
 
     name: str
     orcid: str | None = None
     contributor_type: str | None = None
+    name_identifiers: list[NameIdentifier] = field(
+        default_factory=list,
+    )
 
 
 @dataclass
@@ -46,6 +95,14 @@ class DOIRecord:
     publication_year: int | None = None
     creators: list[DOIContributor] = field(default_factory=list)
     contributors: list[DOIContributor] = field(default_factory=list)
+    rights_list: list[Right] = field(default_factory=list)
+    descriptions: list[Description] = field(default_factory=list)
+    related_identifiers: list[RelatedIdentifier] = field(
+        default_factory=list,
+    )
+    funding_references: list[FundingReference] = field(
+        default_factory=list,
+    )
 
 
 @dataclass
