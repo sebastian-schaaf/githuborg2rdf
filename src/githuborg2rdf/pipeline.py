@@ -6,6 +6,7 @@ from githuborg2rdf.clients.datacite import DataCiteClient, DOIClient
 from githuborg2rdf.clients.github import GitHubClient
 from githuborg2rdf.clients.orcid import ORCIDClient, OrcidClient
 from githuborg2rdf.config import Settings
+from githuborg2rdf.metadata_quality import evaluate_metadata_quality
 from githuborg2rdf.models import Contributor, DOIRecord, HarvestResult, Repository
 
 
@@ -73,6 +74,7 @@ def run_harvest(organization: str) -> HarvestResult:
     result = harvest_contributors(organization, github_client)
     result = enrich_orcids(result, orcid_client)
     result = enrich_dois(result, datacite_client)
+    evaluate_metadata_quality(result.doi_records)
 
     return result
 

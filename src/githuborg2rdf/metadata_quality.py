@@ -1,46 +1,12 @@
 """Automated metadata quality checks for DOI records."""
 
-from dataclasses import dataclass
-
-from githuborg2rdf.models import DOIRecord
+from githuborg2rdf.models import (
+    DOIRecord,
+    MetadataQualityResult,
+)
 
 ORCID_SCHEME = "ORCID"
 ORCID_SCHEME_URI = "https://orcid.org"
-
-
-@dataclass(frozen=True)
-class MetadataQualityResult:
-    """Store the results of the five metadata quality checks."""
-
-    has_license: bool
-    has_description: bool
-    creators_have_orcids: bool
-    has_related_identifiers: bool
-    has_funding: bool
-
-    @property
-    def passed(self) -> bool:
-        """Return whether all five checks passed."""
-        return all(
-            (
-                self.has_license,
-                self.has_description,
-                self.creators_have_orcids,
-                self.has_related_identifiers,
-                self.has_funding,
-            )
-        )
-
-    def as_dict(self) -> dict[str, bool]:
-        """Return the check results as a dictionary."""
-        return {
-            "license": self.has_license,
-            "description": self.has_description,
-            "creators_with_orcid": self.creators_have_orcids,
-            "related_identifiers": self.has_related_identifiers,
-            "funding": self.has_funding,
-            "passed": self.passed,
-        }
 
 
 def _has_license(record: DOIRecord) -> bool:
@@ -97,3 +63,11 @@ def check_metadata_quality(record: DOIRecord) -> MetadataQualityResult:
         has_related_identifiers=_has_related_identifiers(record),
         has_funding=_has_funding(record),
     )
+
+
+def evaluate_metadata_quality(
+    records: list[DOIRecord],
+) -> None:
+    """Attach metadata quality results to DOI records."""
+    for record in records:
+        record.metadata_quality = check_metadata_quality(record)

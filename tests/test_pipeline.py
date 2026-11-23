@@ -212,6 +212,9 @@ def test_run_harvest_creates_client_and_delegates() -> None:
             "githuborg2rdf.pipeline.enrich_dois",
             return_value=expected,
         ) as mock_enrich_dois,
+        patch(
+            "githuborg2rdf.pipeline.evaluate_metadata_quality",
+        ) as mock_evaluate_metadata_quality,
     ):
         result = run_harvest("example")
 
@@ -236,6 +239,9 @@ def test_run_harvest_creates_client_and_delegates() -> None:
     mock_enrich_dois.assert_called_once_with(
         expected,
         datacite_client,
+    )
+    mock_evaluate_metadata_quality.assert_called_once_with(
+        expected.doi_records,
     )
 
 
@@ -431,3 +437,61 @@ def test_enrich_dois_deduplicates_shared_records() -> None:
     assert result.contributors[1].doi_ids == {
         "10.5281/zenodo.1234567",
     }
+
+
+def test_run_harvest_evaluates_metadata_quality_after_doi_enrichment() -> None:
+    """Evaluate metadata quality after DOI enrichment."""
+    expected = HarvestResult(
+        organization="example",
+        repositories=[],
+        contributors=[],
+    )
+    call_order: list[str] = []
+
+    def fake_enrich_dois(
+        result: HarvestResult,
+        client: Any,
+    ) -> HarvestResult:
+        call_order.append("enrich_dois")
+        return expected
+
+    def fake_evaluate_metadata_quality(
+        records: list[DOIRecord],
+    ) -> None:
+        call_order.append("evaluate_metadata_quality")
+        assert records is expected.doi_records
+
+    settings = MagicMock()
+    settings.orcid_access_token = "test-token"  # noqa: S105
+
+    with (
+        patch(
+            "githuborg2rdf.pipeline.Settings.from_environment",
+            return_value=settings,
+        ),
+        patch("githuborg2rdf.pipeline.GitHubClient"),
+        patch("githuborg2rdf.pipeline.OrcidClient"),
+        patch("githuborg2rdf.pipeline.DataCiteClient"),
+        patch(
+            "githuborg2rdf.pipeline.harvest_contributors",
+            return_value=expected,
+        ),
+        patch(
+            "githuborg2rdf.pipeline.enrich_orcids",
+            return_value=expected,
+        ),
+        patch(
+            "githuborg2rdf.pipeline.enrich_dois",
+            side_effect=fake_enrich_dois,
+        ),
+        patch(
+            "githuborg2rdf.pipeline.evaluate_metadata_quality",
+            side_effect=fake_evaluate_metadata_quality,
+        ),
+    ):
+        run_harvest("example")
+
+    assert call_order == [
+        "enrich_dois",
+        "evaluate_metadata_quality",
+    ]

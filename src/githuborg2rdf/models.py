@@ -84,6 +84,41 @@ class DOIContributor:
     )
 
 
+@dataclass(frozen=True)
+class MetadataQualityResult:
+    """Store the results of the five metadata quality checks."""
+
+    has_license: bool
+    has_description: bool
+    creators_have_orcids: bool
+    has_related_identifiers: bool
+    has_funding: bool
+
+    @property
+    def passed(self) -> bool:
+        """Return whether all five metadata checks passed."""
+        return all(
+            (
+                self.has_license,
+                self.has_description,
+                self.creators_have_orcids,
+                self.has_related_identifiers,
+                self.has_funding,
+            )
+        )
+
+    def as_dict(self) -> dict[str, bool]:
+        """Return the check results as a dictionary."""
+        return {
+            "license": self.has_license,
+            "description": self.has_description,
+            "creators_with_orcid": self.creators_have_orcids,
+            "related_identifiers": self.has_related_identifiers,
+            "funding": self.has_funding,
+            "passed": self.passed,
+        }
+
+
 @dataclass
 class DOIRecord:
     """Represent a DOI record retrieved from DataCite."""
@@ -103,6 +138,7 @@ class DOIRecord:
     funding_references: list[FundingReference] = field(
         default_factory=list,
     )
+    metadata_quality: MetadataQualityResult | None = None
 
 
 @dataclass
