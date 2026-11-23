@@ -3,7 +3,13 @@
 from rdflib import Literal, URIRef
 from rdflib.namespace import RDF, XSD
 
-from githuborg2rdf.models import Contributor, HarvestResult, Repository
+from githuborg2rdf.models import (
+    Contributor,
+    DOIContributor,
+    DOIRecord,
+    HarvestResult,
+    Repository,
+)
 from githuborg2rdf.rdf import G2R, SCHEMA, build_graph
 
 
@@ -94,3 +100,182 @@ def test_build_graph_exports_organization_repository_and_contribution() -> None:
     assert isinstance(count, Literal)
     assert count.toPython() == 3
     assert count.datatype == XSD.integer
+
+
+def test_build_graph_exports_contributor_orcid_and_doi() -> None:
+    """Export a contributor's ORCID and DOI reference."""
+    result = HarvestResult(
+        organization="example",
+        repositories=[],
+        contributors=[
+            Contributor(
+                login="alice",
+                html_url="https://github.com/alice",
+                contributions=3,
+                repositories=set(),
+                contributions_by_repository={},
+                orcid="0000-0002-1825-0097",
+                doi_ids={"10.5281/example.123"},
+            ),
+        ],
+        doi_records=[
+            DOIRecord(
+                doi="10.5281/example.123",
+                title="Example software",
+                resource_type="Software",
+                publisher="Zenodo",
+                publication_year=2025,
+            ),
+        ],
+    )
+
+    graph = build_graph(result)
+
+    contributor_uri = URIRef("https://github.com/alice")
+    orcid_uri = URIRef("https://orcid.org/0000-0002-1825-0097")
+    doi_uri = URIRef("https://doi.org/10.5281/example.123")
+
+    assert (
+        contributor_uri,
+        SCHEMA.identifier,
+        orcid_uri,
+    ) in graph
+
+    assert (
+        contributor_uri,
+        SCHEMA.citation,
+        doi_uri,
+    ) in graph
+
+    assert (
+        doi_uri,
+        RDF.type,
+        SCHEMA.CreativeWork,
+    ) in graph
+
+
+def test_build_graph_exports_doi_metadata() -> None:
+    """Export metadata for a DOI record."""
+    result = HarvestResult(
+        organization="example",
+        repositories=[],
+        contributors=[],
+        doi_records=[
+            DOIRecord(
+                doi="10.5281/example.456",
+                title="Example dataset",
+                resource_type="Dataset",
+                publisher="Example Publisher",
+                publication_year=2024,
+            ),
+        ],
+    )
+
+    graph = build_graph(result)
+
+    doi_uri = URIRef("https://doi.org/10.5281/example.456")
+
+    assert (
+        doi_uri,
+        RDF.type,
+        SCHEMA.CreativeWork,
+    ) in graph
+
+    assert (
+        doi_uri,
+        SCHEMA.name,
+        Literal("Example dataset"),
+    ) in graph
+
+    assert (
+        doi_uri,
+        G2R.resourceType,
+        Literal("Dataset"),
+    ) in graph
+
+    assert (
+        doi_uri,
+        SCHEMA.publisher,
+        Literal("Example Publisher"),
+    ) in graph
+
+    assert (
+        doi_uri,
+        SCHEMA.datePublished,
+        Literal(2024, datatype=XSD.gYear),
+    ) in graph
+
+
+def test_build_graph_exports_doi_people() -> None:
+    """Export creators and contributors associated with a DOI."""
+    result = HarvestResult(
+        organization="example",
+        repositories=[],
+        contributors=[],
+        doi_records=[
+            DOIRecord(
+                doi="10.5281/example.789",
+                title="Example work",
+                resource_type="Software",
+                publisher="Zenodo",
+                publication_year=2025,
+                creators=[
+                    DOIContributor(
+                        name="Alice Example",
+                        orcid="0000-0002-1825-0097",
+                    ),
+                ],
+                contributors=[
+                    DOIContributor(
+                        name="Bob Example",
+                        orcid="0000-0003-1234-5678",
+                        contributor_type="DataCurator",
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    graph = build_graph(result)
+
+    doi_uri = URIRef("https://doi.org/10.5281/example.789")
+
+    creator_nodes = list(graph.objects(doi_uri, SCHEMA.creator))
+    assert len(creator_nodes) == 1
+
+    creator_node = creator_nodes[0]
+
+    assert (
+        creator_node,
+        RDF.type,
+        SCHEMA.Person,
+    ) in graph
+
+    assert (
+        creator_node,
+        SCHEMA.name,
+        Literal("Alice Example"),
+    ) in graph
+
+    assert (
+        creator_node,
+        SCHEMA.identifier,
+        URIRef("https://orcid.org/0000-0002-1825-0097"),
+    ) in graph
+
+    contributor_nodes = list(graph.objects(doi_uri, SCHEMA.contributor))
+    assert len(contributor_nodes) == 1
+
+    contributor_node = contributor_nodes[0]
+
+    assert (
+        contributor_node,
+        SCHEMA.name,
+        Literal("Bob Example"),
+    ) in graph
+
+    assert (
+        contributor_node,
+        G2R.contributorType,
+        Literal("DataCurator"),
+    ) in graph
