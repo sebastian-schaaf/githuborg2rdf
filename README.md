@@ -1,80 +1,238 @@
-[
-![Docs](https://img.shields.io/badge/read-docs-success)
-](https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url)
-[
-![Test Coverage](https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url/main/coverage_badge.svg)
-](https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url/main/coverage)
-[
-![CI](https://img.shields.io/github/actions/workflow/status/sebastian-schaaf/githuborg2rdf/ci.yml?branch=main&label=ci)
-](https://github.com/sebastian-schaaf/githuborg2rdf/actions/workflows/ci.yml)
-
-
-<!-- --8<-- [start:abstract] -->
 # GitHubOrg2RDF
 
-----
-**:warning: TODO: Complete project setup :construction:**
+GitHubOrg2RDF generates an RDF knowledge graph from the public activity and
+research-related metadata of a GitHub organization.
 
-This is a Python project generated from the
-[fair-python-cookiecutter](https://github.com/Materials-Data-Science-and-Informatics/fair-python-cookiecutter)
-template.
+The pipeline combines information from GitHub, ORCID and DataCite. It retrieves
+repositories and their non-bot contributors, attempts to match contributors to
+ORCID records, collects related DOI metadata, evaluates selected metadata
+quality criteria and exports the results as a Turtle-based RDF graph.
 
-**TODO:** To finalize the project setup, please carefully read and follow the instructions in the
-[developer guide](https://materials-data-science-and-informatics.github.io/fair-python-cookiecutter/latest/dev_guide).
-A copy of the guide is included in your project in `docs/dev_guide.md`.
+The resulting graph represents organizations, repositories, contributors,
+research outputs, authors, related identifiers, funding information and
+metadata-quality information. Repository-specific contributor relationships are
+represented using `schema:contributor`, while organization membership is
+represented separately using `schema:memberOf`.
 
-----
-
-This pipeline generates an RDF from a GitHub organization in a six-step process: 1) Extract all (non-bot) contributors of all the organizations's repositories and 2) try to match them to ORCIDs. For those 3)get all DOI records from DataCite including their metadata and 4) build an RDF graph out of the overall results. 5) Assigning a basic set of quality measurements of the DOI records' metadata and 6) a visualizationh are the final steps, providing an overview and enabling deeper analyses of the graph.
-
-**:construction: TODO: Write a paragraph summarizing what this project is about.**
-
-<!-- --8<-- [end:abstract] -->
-<!-- --8<-- [start:quickstart] -->
+The generated RDF can be used for exploration, visualization, metadata
+analysis and further research on the relationship between software repositories,
+contributors and research outputs.
 
 ## Installation
 
-**TODO: check that the installation instructions work**
+GitHubOrg2RDF requires Python 3.10 or newer.
 
-This project works with Python > 3.9.
+Clone the repository and install the project with Poetry:
 
 ```bash
-pip install git+ssh://git@github.com/sebastian-schaaf/githuborg2rdf.git
+git clone https://github.com/sebastian-schaaf/githuborg2rdf.git
+cd githuborg2rdf
+poetry install
 ```
 
-## Getting Started
+Alternatively, install the package directly from GitHub:
 
-**TODO: provide a minimal working example**
+```bash
+pip install git+https://github.com/sebastian-schaaf/githuborg2rdf.git
+```
 
-<!-- --8<-- [end:quickstart] -->
+## Getting started
+
+To export the data of a GitHub organization as an RDF graph, run:
+
+```bash
+poetry run githuborg2rdf-cli export Materials-Data-Science-and-Informatics
+```
+
+Replace `Materials-Data-Science-and-Informatics` with the name of the GitHub
+organization to process.
+
+The generated RDF graph is written as a Turtle file to:
+
+```text
+output/githuborg2rdf.ttl
+```
+
+The available command-line options can be displayed with:
+
+```bash
+poetry run githuborg2rdf-cli export --help
+```
+
+### Main processing steps
+
+The `export` command performs the following steps:
+
+1. Retrieve the repositories of the selected GitHub organization.
+2. Retrieve the contributors of each repository.
+3. Exclude bot accounts from the contributor data.
+4. Preserve repository-specific contributor relationships.
+5. Aggregate contributor information across repositories.
+6. Match contributors to ORCID records where possible.
+7. Retrieve related DOI records and their metadata from DataCite.
+8. Calculate selected metadata-quality measurements for DOI records.
+9. Export the collected information as an RDF graph in Turtle format.
+
+The resulting Turtle file can be visualized in an instance of [`rdf-graph-visualization`](https://github.com/Materials-Data-Science-and-Informatics/rdf-graph-visualization). In this case, please find a configuration yml file in the following directory:
+
+```text
+vis_config/config.yml
+```
+Just copy the config file into the base directory of your rdf-graph-visualization instance.
+
+### RDF relationships
+
+The generated RDF graph includes relationships such as:
+
+```text
+Repository  --schema:isPartOf-----> Organization
+Repository  --schema:contributor--> Person
+Person      --schema:memberOf------> Organization
+Dataset     --schema:creator-------> Person
+Dataset     --schema:relatedLink---> Repository
+```
+
+The precise set of properties depends on the metadata returned by GitHub,
+ORCID and DataCite.
+
+## Data sources
+
+GitHubOrg2RDF uses publicly available metadata from the following services:
+
+- [GitHub](https://github.com/) for organizations, repositories and
+  contributors.
+- [ORCID](https://orcid.org/) for contributor identification and researcher
+  metadata.
+- [DataCite](https://datacite.org/) for DOI records and associated research
+  metadata.
+
+The completeness of the generated graph depends on the information available
+from these services at the time of the export.
+
+## Metadata quality
+
+GitHubOrg2RDF calculates selected quality measurements for DOI metadata. These
+measurements help identify the completeness of relevant metadata fields and
+provide an initial indication of metadata quality.
+
+The quality measurements are intended to support exploration and analysis.
+They should not be interpreted as a complete or authoritative assessment of
+the quality of a DOI record.
+
+## Limitations
+
+The generated RDF graph is an enriched view of publicly available metadata. It
+is not intended to be a complete or authoritative record of all software
+contributions, researchers or research outputs.
+
+Contributor-to-ORCID matching depends on the identifiers and metadata available
+from the respective services. A missing ORCID match does not imply that a
+contributor has no ORCID record.
+
+Similarly, the absence of a DOI record or metadata field does not imply that no
+corresponding research output or information exists.
+
+The availability and completeness of the generated data may also be affected
+by API rate limits, service availability and changes to the APIs of GitHub,
+ORCID or DataCite.
+
+## Development
+
+Install the project and its development dependencies with:
+
+```bash
+poetry install
+```
+
+Run the test suite with:
+
+```bash
+poetry run pytest
+```
+
+Run the configured pre-commit checks with:
+
+```bash
+poetry run pre-commit run --all-files
+```
+
+The test suite covers the clients, pipeline, metadata-quality measurements,
+command-line interface and RDF export.
 
 ## Troubleshooting
 
-### When I try installing the package, I get an `IndexError: list index out of range`
+### Installation fails with `IndexError: list index out of range`
 
-Make sure you have `pip` > 21.2 (see `pip --version`), older versions have a bug causing
-this problem. If the installed version is older, you can upgrade it with
-`pip install --upgrade pip` and then try again to install the package.
+Check the installed version of `pip`:
 
-**You can find more information on using and contributing to this repository in the
-[documentation](https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url/main).**
+```bash
+python -m pip --version
+```
 
-<!-- --8<-- [start:citation] -->
+Upgrade `pip` if necessary:
 
-## How to Cite
+```bash
+python -m pip install --upgrade pip
+```
 
-If you want to cite this project in your scientific work,
-please use the [citation file](https://citation-file-format.github.io/)
-in the [repository](https://github.com/sebastian-schaaf/githuborg2rdf/blob/main/CITATION.cff).
+Then try installing the project again.
 
-<!-- --8<-- [end:citation] -->
-<!-- --8<-- [start:acknowledgements] -->
+### API requests fail
+
+If requests to an external API fail, check the following:
+
+- the GitHub organization name is correct;
+- the required API credentials are configured;
+- the external service is available;
+- API rate limits have not been exceeded;
+- installed dependencies are up to date.
+
+To display the available command-line options, run:
+
+```bash
+poetry run githuborg2rdf-cli export --help
+```
+
+### The output file is not where expected
+
+The default output file is:
+
+```text
+output/githuborg2rdf.ttl
+```
+
+Make sure that the command is executed from the root directory of the project
+and that the export completes without errors.
+
+## License
+
+GitHubOrg2RDF is released under the MIT License. See the
+[`LICENSE`](LICENSE) file for the complete license text.
+
+## How to cite
+
+If you use GitHubOrg2RDF in a scientific publication, please cite the project
+using the [`CITATION.cff`](CITATION.cff) file included in this repository.
+
+The citation metadata can be used with tools that support the
+[Citation File Format](https://citation-file-format.github.io/).
 
 ## Acknowledgements
 
-We kindly thank all
-[authors and contributors](https://github.com/sebastian-schaaf/githuborg2rdf/pages_fake_url/latest/credits).
+This project builds on the work and support of several people and
+organizations.
 
-**TODO: relevant organizational acknowledgements (employers, funders)**
+Special thanks go to:
 
-<!-- --8<-- [end:acknowledgements] -->
+- **Volker Hofmann** for the inspiring project idea and the opportunity to
+  present this work.
+- **Mustafa Soylu** and **Anton Pirogov** for developing the
+  [`fair-python-cookiecutter`](https://github.com/Materials-Data-Science-and-Informatics/fair-python-cookiecutter)
+  project, which provided the foundation for this Python project.
+- **Mustafa Soylu** for developing the
+  [`rdf-graph-visualization`](https://github.com/Materials-Data-Science-and-Informatics/rdf-graph-visualization)
+  project.
+- The **Institute for Materials Data Science and Informatics (IAS-9)** at
+  [Forschungszentrum Jülich](https://fz-juelich.de/ias/ias-9/) for its
+  extensive preparatory work and for publishing numerous software solutions
+  under open-source licenses.
