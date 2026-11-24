@@ -449,7 +449,7 @@ def test_quality_measurements_preserve_individual_results() -> None:
 
 
 def test_no_measurements_are_created_without_quality_result() -> None:
-    """Skip measurements when quality has not been evaluated."""
+    """Skip quality output when no quality result exists."""
     record = DOIRecord(
         doi="10.5281/zenodo.1234567",
     )
@@ -463,14 +463,25 @@ def test_no_measurements_are_created_without_quality_result() -> None:
         record_uri,
     )
 
-    measurements = list(
-        graph.objects(
-            record_uri,
-            DQV.hasQualityMeasurement,
+    assert (
+        list(
+            graph.objects(
+                record_uri,
+                QUALITY.metadataQualityPassed,
+            )
         )
+        == []
     )
 
-    assert measurements == []
+    assert (
+        list(
+            graph.objects(
+                record_uri,
+                DQV.hasQualityMeasurement,
+            )
+        )
+        == []
+    )
 
 
 def test_quality_measurement_values_are_xsd_booleans() -> None:
@@ -499,3 +510,26 @@ def test_quality_measurement_values_are_xsd_booleans() -> None:
     value = graph.value(measurement, DQV.value)
 
     assert value == Literal(False, datatype=XSD.boolean)
+
+
+def test_metadata_quality_passed_is_added_to_record() -> None:
+    """Add the overall metadata quality result to the DOI record."""
+    record = DOIRecord(
+        doi="10.5281/zenodo.1234567",
+    )
+    record.metadata_quality = check_metadata_quality(record)
+
+    graph = Graph()
+    record_uri = URIRef("https://doi.org/10.5281/zenodo.1234567")
+
+    add_metadata_quality_measurements(
+        graph,
+        record,
+        record_uri,
+    )
+
+    assert (
+        record_uri,
+        QUALITY.metadataQualityPassed,
+        Literal(False, datatype=XSD.boolean),
+    ) in graph

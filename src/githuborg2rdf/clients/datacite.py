@@ -117,7 +117,7 @@ class DataCiteClient:
         """Return DOI records associated with an ORCID."""
         response = requests.get(
             f"{self.base_url}/dois",
-            params={"query": f"orcid:{orcid}"},
+            params={"filter": f"orcid:{orcid}"},
             headers={"Accept": "application/vnd.api+json"},
             timeout=30,
         )

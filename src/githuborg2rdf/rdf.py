@@ -1,7 +1,7 @@
 """Build RDF graphs from harvested GitHub organization data."""
 
 from rdflib import BNode, Graph, Literal, Namespace, URIRef
-from rdflib.namespace import RDF, XSD
+from rdflib.namespace import RDF, RDFS, XSD
 
 from githuborg2rdf.models import DOIRecord, HarvestResult
 
@@ -22,6 +22,17 @@ def add_metadata_quality_measurements(
     if quality is None:
         return
 
+    graph.add(
+        (
+            record_uri,
+            QUALITY.metadataQualityPassed,
+            Literal(
+                quality.passed,
+                datatype=XSD.boolean,
+            ),
+        )
+    )
+
     checks = (
         (QUALITY.hasLicense, quality.has_license),
         (QUALITY.hasDescription, quality.has_description),
@@ -37,6 +48,14 @@ def add_metadata_quality_measurements(
     )
 
     for check_uri, value in checks:
+        graph.add(
+            (
+                record_uri,
+                check_uri,
+                Literal(value, datatype=XSD.boolean),
+            )
+        )
+
         measurement_uri = BNode()
 
         graph.add(
@@ -86,6 +105,27 @@ def _orcid_uri(orcid: str) -> URIRef:
     return URIRef(f"https://orcid.org/{orcid}")
 
 
+def add_quality_labels(graph: Graph) -> None:
+    """Add human-readable labels for quality predicates."""
+    labels = {
+        QUALITY.metadataQualityPassed: "Metadata quality passed",
+        QUALITY.hasLicense: "License available",
+        QUALITY.hasDescription: "Description available",
+        QUALITY.creatorsHaveOrcids: "Creators have ORCIDs",
+        QUALITY.hasRelatedIdentifiers: "Related identifiers available",
+        QUALITY.hasFunding: "Funding available",
+    }
+
+    for predicate, label in labels.items():
+        graph.add(
+            (
+                predicate,
+                RDFS.label,
+                Literal(label, lang="en"),
+            )
+        )
+
+
 def build_graph(result: HarvestResult) -> Graph:
     """Build an RDF graph from a complete harvest result."""
     # build_graph()
@@ -104,6 +144,7 @@ def build_graph(result: HarvestResult) -> Graph:
 
     # Init graph and namespaces
     graph = Graph()
+    add_quality_labels(graph)
 
     graph.bind("schema", SCHEMA)
     graph.bind("g2r", G2R)
@@ -137,6 +178,13 @@ def build_graph(result: HarvestResult) -> Graph:
         graph.add(
             (
                 repository_uri,
+                RDF.type,
+                SCHEMA.Software,
+            )
+        )
+        graph.add(
+            (
+                repository_uri,
                 SCHEMA.name,
                 Literal(repository.name),
             )
@@ -155,6 +203,18 @@ def build_graph(result: HarvestResult) -> Graph:
                 organization_uri,
             )
         )
+        for contributor in repository.contributors:
+            contributor_uri = URIRef(
+                contributor.html_url or f"https://github.com/{contributor.login}"
+            )
+
+            graph.add(
+                (
+                    repository_uri,
+                    SCHEMA.contributor,
+                    contributor_uri,
+                )
+            )
 
     # Export DOI datasets and their metadata.
     for record in result.doi_records:
@@ -167,15 +227,24 @@ def build_graph(result: HarvestResult) -> Graph:
                 SCHEMA.CreativeWork,
             )
         )
-        # DOI metadata
-        if record.title is not None:
-            graph.add(
-                (
-                    record_uri,
-                    SCHEMA.name,
-                    Literal(record.title),
-                )
+        graph.add(
+            (
+                record_uri,
+                RDF.type,
+                SCHEMA.Dataset,
             )
+        )
+
+        # DOI metadata
+        dataset_label = record.title or record.doi
+
+        graph.add(
+            (
+                record_uri,
+                SCHEMA.name,
+                Literal(dataset_label),
+            )
+        )
 
         if record.resource_type is not None:
             graph.add(

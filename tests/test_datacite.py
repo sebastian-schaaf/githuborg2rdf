@@ -111,7 +111,7 @@ def test_find_dois_parses_doi_metadata(
         timeout: int,
     ) -> FakeResponse:
         assert url == "https://api.datacite.org/dois"
-        assert params == {"query": "orcid:0000-0002-1825-0097"}
+        assert params == {"filter": "orcid:0000-0002-1825-0097"}
         assert headers == {
             "Accept": "application/vnd.api+json",
         }

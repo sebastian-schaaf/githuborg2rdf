@@ -90,18 +90,32 @@ def test_harvest_contributors_merges_and_sorts() -> None:
     contributors = result.contributors
 
     assert result.organization == "example"
-    assert result.repositories == [
-        Repository(
-            owner="example",
-            name="repo-one",
-            html_url="https://github.com/example/repo-one",
-        ),
-        Repository(
-            owner="example",
-            name="repo-two",
-            html_url="https://github.com/example/repo-two",
-        ),
+    assert [repository.name for repository in result.repositories] == [
+        "repo-one",
+        "repo-two",
     ]
+
+    assert [
+        contributor.login for contributor in result.repositories[0].contributors
+    ] == [
+        "alice",
+        "bob",
+    ]
+
+    assert [
+        contributor.login for contributor in result.repositories[1].contributors
+    ] == [
+        "alice",
+        "charlie",
+    ]
+
+    assert [
+        contributor.contributions for contributor in result.repositories[0].contributors
+    ] == [3, 1]
+
+    assert [
+        contributor.contributions for contributor in result.repositories[1].contributors
+    ] == [5, 2]
 
     assert [contributor.login for contributor in contributors] == [
         "alice",
