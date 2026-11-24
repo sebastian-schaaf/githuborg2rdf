@@ -10,6 +10,7 @@ class Repository:
     owner: str
     name: str
     html_url: str
+    contributors: tuple["Contributor", ...] = ()
 
 
 @dataclass

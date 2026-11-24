@@ -1,5 +1,6 @@
 """Pipeline orchestration for extracting and transforming GitHub data."""
 
+from dataclasses import replace
 from typing import Protocol
 
 from githuborg2rdf.clients.datacite import DataCiteClient, DOIClient
@@ -33,15 +34,28 @@ def harvest_contributors(
     contributors_by_login: dict[str, Contributor] = {}
 
     repositories = client.list_repositories(organization)
+    enriched_repositories: list[Repository] = []
 
     for repository in repositories:
-        contributors = client.list_contributors(repository)
+        repository_contributors = client.list_contributors(repository)
 
-        for contributor in contributors:
+        enriched_repository = replace(
+            repository,
+            contributors=tuple(repository_contributors),
+        )
+        enriched_repositories.append(enriched_repository)
+
+        for contributor in repository_contributors:
             existing = contributors_by_login.get(contributor.login)
 
             if existing is None:
-                contributors_by_login[contributor.login] = contributor
+                contributors_by_login[contributor.login] = replace(
+                    contributor,
+                    repositories=set(contributor.repositories),
+                    contributions_by_repository=dict(
+                        contributor.contributions_by_repository
+                    ),
+                )
                 continue
 
             existing.repositories.update(contributor.repositories)
@@ -57,7 +71,7 @@ def harvest_contributors(
 
     return HarvestResult(
         organization=organization,
-        repositories=repositories,
+        repositories=enriched_repositories,
         contributors=sorted_contributors,
     )
 

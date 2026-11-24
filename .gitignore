@@ -164,4 +164,7 @@ Thumbs.db
 # ruff
 .ruff_cache/
 
+# outputs
+output/*
+
 # End of https://www.toptal.com/developers/gitignore/api/python
